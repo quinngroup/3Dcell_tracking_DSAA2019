@@ -69,26 +69,18 @@ def read_images(folders_address, file_extension, sample_address, t_slice, z_slic
 	
 	sample_file_name = sample_address
 	addr=os.path.join(folders_address, sample_file_name) 
-	#sample = cv2.imread(os.path.join(folders_address, sample_file_name), cv2.IMREAD_GRAYSCALE)
-	#sample = cv2.imread('https://uga-toxo.storage.googleapis.com/3d_video1/t01/010t01z01.tif', cv2.IMREAD_GRAYSCALE)
 	sample = read_image_file(addr, cv2.IMREAD_GRAYSCALE)
 	
 	
 	directory_list = list()
 	directory_list = list(fs.ls(folders_address, detail=False))
-	#for root, dirs, files in fs.walk(folders_address , detail=False):
-	#    for name in dirs:
-	#        if not (name.startswith('.')):
-	#            directory_list.append(os.path.join(root, name))
-
 
 	sorted_path = sorted(directory_list)
 	#print(sorted_path)
 
 	all_images = list ()
 	extension = file_extension
-	#print(extension)
-	#print( [file for i in range(len(sorted_path)) for file in sorted(fs.glob(os.path.join(sorted_path[i],extension))) ] )
+
 	images = [delayed(read_image_file)(file,cv2.IMREAD_GRAYSCALE) for i in range(len(sorted_path)) for file in sorted(fs.glob(os.path.join(sorted_path[i],extension))) ] 
 	arrays = [da.from_delayed(im, shape = sample.shape, dtype = sample.dtype) for im in images]
 	#print(arrays)
@@ -175,20 +167,11 @@ def index_thr(frame,unique_array, denoising_thresh):
 
 def tracker(all_centers):
 
-	''' Now let's initialize the first elements of each object with the
-	first centers in our frame 0, then we should append the points to these elements
-	as a result, at the begining our number of objects will be equal to 
-	number of centers in first frame.
-	'''
 	all_cen = all_centers #[ [x[0] for x in frame ] for frame in all_centers]
 	new_objects = [ [(0,x)] for x in all_centers[0] ]
 
-	# we need to set a threshold for adding only the closest points
-	# within a threshold to our object list
-
 	t_limit = 20
 
-	# Now, we need to iterate on the frames and running our points matching module
 	for i in range (1, len(all_cen)-1):
 	    
 	    '''in every step we need to check the points in current frame with 

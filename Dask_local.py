@@ -1,3 +1,7 @@
+''' This script is created by Mojtaba S. Fazli, as a part of the pipeline for the paper submitted to IEEEDSAA 2019.
+This part indicates the local dask version of our code. The full details are explained in the paper. However, since 
+the original data belongs to our collaborators in cell-biology major, we are not allowed to make them public yet.''' 
+
 import numpy as np
 import math
 import cv2
@@ -98,6 +102,20 @@ def tracker(all_centers):
 	first centers in our frame 0, then we should append the points to these elements
 	as a result, at the begining our number of objects will be equal to 
 	number of centers in first frame.
+
+    Parameters
+    ----------
+    all_centers: list
+        list of the centers of the 3D components per frame.   
+    
+    Returns
+    -------
+    xx, yy, zz : arrays
+        shape (objects, (z, x or y), frame)
+        xx : indicates the x dimension of the trajectories of each cell
+        yy : indicates the y dimension of the trajectories of each cell
+        ZZ : indicates the z dimension of the trajectories of each cell
+
 	'''
 	all_cen = all_centers #[ [x[0] for x in frame ] for frame in all_centers]
 	new_objects = [ [(0,x)] for x in all_centers[0] ]
@@ -107,37 +125,18 @@ def tracker(all_centers):
 
 	t_limit = 20
 
-	# Now, we need to iterate on the frames and running our points matching module
 	for i in range (1, len(all_cen)-1):
 	    
-	    '''in every step we need to check the points in current frame with 
-	    last selected points in our object list
-	    '''
 	    current_frame = all_cen[i]
-	    last_known_centers = [ obj[-1][1] for obj in new_objects if len(obj)>0 ] 
-	    
-	    # We are going to use Hungarian algorithm which is built in scipy
-	    # As linear_sum_assignment. we need to pass a cost to that function
-	    # the function will assign the points based on minimum cost. Here we 
-	    # define the distance between the above mentioned points as our cost 
-	    # function 
+	    last_known_centers = [ obj[-1][1] for obj in new_objects if len(obj)>0 ]    
 	    cost = distance.cdist(last_known_centers, current_frame,'euclidean')
-	    # in this function row_ind will act as object_ids and the col_ind
-	    # will play the role of new_centers_ind for us so we have : 
-	    obj_ids, new_centers_ind = linear_sum_assignment(cost)
-	    
+	    obj_ids, new_centers_ind = linear_sum_assignment(cost)  
 	    all_center_inds = set(range(len(current_frame)))
-	    # now we should iterate on obj_id and new_center_ind 
-	    # checking the min acceptable distance , appending the points to 
-	    # our frames and finally removing those points from our set.
 	    
 	    for  obj_id, new_center_ind  in zip(obj_ids,new_centers_ind):
 	        if( distance.euclidean(np.array(current_frame[new_center_ind]),np.array(new_objects[obj_id][-1][1]) ) <= t_limit):
 	            all_center_inds.remove(new_center_ind)
 	            new_objects[obj_id].append((i,current_frame[new_center_ind]))
-	    # at the end if the points are not matched with the previous objects 
-	    # we will consider them as new objects and appending them to the end 
-	    # of our object list.
 
 	    for new_center_ind in all_center_inds:
 	        new_objects.append([ (i,current_frame[new_center_ind])])
@@ -166,7 +165,18 @@ def tracker(all_centers):
 
 
 def visualization_3d_detection(all_cnf, image_width, image_height):
+''' This function plots the detected cell particles in a 3D space
 
+    Parameters
+    ----------
+    all_cnf: list
+        list of the centers of the 3D components per frame.   
+    image_width:
+        indicates the width of image 
+    image_height:
+        indicates the height of image 
+
+'''
 	znf3d = [[]]
 	xnf3d = [[]]
 	ynf3d = [[]]
@@ -273,7 +283,7 @@ def preprocessing_for_clustering(x, y, z, frame_number, object_numbers):
             newxx.append(x[i])
             newyy.append(y[i])
             newzz.append(z[i])
-    #print ('len obj(' +str(i) +')='+str(len(xx[i])) )
+
     allx = np.asarray(newxx)
     ally = np.asarray(newyy)
     allz = np.asarray(newzz)
@@ -288,7 +298,7 @@ def laplacian(A):
     w = np.sum(A, axis=0)
     D.flat[::len(w) + 1] = w ** (-0.5)  # set the diag of D to w
     return D.dot(A).dot(D)
-#def apply_martin()
+
 def state_space(raw_data, q):
     
     import numpy as np
@@ -439,15 +449,15 @@ def martin(A1, C1, A2, C2):
     P11, P12, P22 = X[:(q * d), :(q * d)], X[:(q * d), (q * d):], X[(q * d):, (q * d):]
     PPP = sla.inv(P11).dot(P12).dot(sla.inv(P22)).dot(P12.T)
     
+    # To avoid creating the negative values on similarity matrix we normalized the eigenvalues. 
     w = sla.eigvalsh(PPP)
     maxpp = w.flatten().max()
     w = np.true_divide(w, maxpp)
     if w.prod() <= 0.0:
         # Swigert: Hey we've got a problem here.
         w = np.delete(w, np.where(w <= 0.0))
-    #print(w)
-    #print('Done')
     return -np.log(w.prod())
+
 def computing_affinity(traj_pool, frame_numbers, flatten_AR_mat, number_of_points):    
     #first We create a trajectory pool with the dimensions of 3x(Num_of_trajectoris)x(Num_of_frames)
     all_traj_mat = traj_pool.copy()
@@ -466,12 +476,10 @@ def computing_affinity(traj_pool, frame_numbers, flatten_AR_mat, number_of_point
         flatten_AR_mat[index] = np.concatenate((A1.flatten(), A2.flatten(), A3.flatten(), A4.flatten(), A5.flatten()))
     print(flatten_AR_mat.shape)
     
-    # Now let us create a pairwise Martin Distance:
 
    #===================================================================================
-   # DASK version of a bottleneck: just for faster processing
+   # Parallel version of a bottleneck: just for faster processing
    #===================================================================================
-    #import dask.bag as db
 
     import multiprocessing
     from joblib import Parallel, delayed
@@ -482,14 +490,6 @@ def computing_affinity(traj_pool, frame_numbers, flatten_AR_mat, number_of_point
                                                 for j in range(flatten_AR_mat.shape[0]))
     Mrt_dist_mat = np.asarray(Mrt_dist_mat)
     Mrt_dist_mat = Mrt_dist_mat.reshape(flatten_AR_mat.shape[0],flatten_AR_mat.shape[0])
-    print(Mrt_dist_mat.shape)
-    # Mrt_dist = [ dask.delayed(martin)(flatten_AR_mat[i], C, flatten_AR_mat[j], C) for i in range(flatten_AR_mat.shape[0]) 
-    #                                             for j in range(flatten_AR_mat.shape[0]) ]
-
-    # Mrt_dist_mat = dask.compute(*Mrt_dist)
-    # Mrt_dist_mat = np.asarray(Mrt_dist_mat)
-    # #Mrt_dist_mat = Mrt_dist_mat.reshape(flatten_AR_mat.shape[0],flatten_AR_mat.shape[0])
-    # print(Mrt_dist_mat.shape)
 
 
     #OK! Now, It's the to polish the results of computing the distance:
@@ -537,7 +537,7 @@ def main():
 	denoising_thresh = 1
 	color_list = ['red', 'y', 'blue', 'green', 'cyan', 'pink','lime','brown']
 
-	num_cores = 20#multiprocessing.cpu_count()
+	num_cores = 36#multiprocessing.cpu_count()
 	client = Client(n_workers=num_cores)
 
 	all_image_arr = read_images(folders, extension, sample_address, 63, 41, 500, 502)

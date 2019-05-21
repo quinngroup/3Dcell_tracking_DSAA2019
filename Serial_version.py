@@ -135,50 +135,24 @@ def center_detection(all_img_arr, all_labeled, thr_idxs):
 
 def tracker(all_centers):
 
-	''' Now let's initialize the first elements of each object with the
-	first centers in our frame 0, then we should append the points to these elements
-	as a result, at the begining our number of objects will be equal to 
-	number of centers in first frame.
-	'''
 	all_cen = all_centers #[ [x[0] for x in frame ] for frame in all_centers]
 	new_objects = [ [(0,x)] for x in all_centers[0] ]
 
-	# we need to set a threshold for adding only the closest points
-	# within a threshold to our object list
-
 	t_limit = 20
 
-	# Now, we need to iterate on the frames and running our points matching module
 	for i in range (1, len(all_cen)-1):
 	    
-	    '''in every step we need to check the points in current frame with 
-	    last selected points in our object list
-	    '''
 	    current_frame = all_cen[i]
 	    last_known_centers = [ obj[-1][1] for obj in new_objects if len(obj)>0 ] 
-	    
-	    # We are going to use Hungarian algorithm which is built in scipy
-	    # As linear_sum_assignment. we need to pass a cost to that function
-	    # the function will assign the points based on minimum cost. Here we 
-	    # define the distance between the above mentioned points as our cost 
-	    # function 
 	    cost = distance.cdist(last_known_centers, current_frame,'euclidean')
-	    # in this function row_ind will act as object_ids and the col_ind
-	    # will play the role of new_centers_ind for us so we have : 
 	    obj_ids, new_centers_ind = linear_sum_assignment(cost)
 	    
 	    all_center_inds = set(range(len(current_frame)))
-	    # now we should iterate on obj_id and new_center_ind 
-	    # checking the min acceptable distance , appending the points to 
-	    # our frames and finally removing those points from our set.
 	    
 	    for  obj_id, new_center_ind  in zip(obj_ids,new_centers_ind):
 	        if( distance.euclidean(np.array(current_frame[new_center_ind]),np.array(new_objects[obj_id][-1][1]) ) <= t_limit):
 	            all_center_inds.remove(new_center_ind)
 	            new_objects[obj_id].append((i,current_frame[new_center_ind]))
-	    # at the end if the points are not matched with the previous objects 
-	    # we will consider them as new objects and appending them to the end 
-	    # of our object list.
 
 	    for new_center_ind in all_center_inds:
 	        new_objects.append([ (i,current_frame[new_center_ind])])
@@ -265,15 +239,10 @@ def Trajectory_3D_TimeVarying(frame_num, single_flag, point_num, s, x, y, z, num
         for j in range(0, n-s, s):
             if single_flag :             
                 ax.plot(yy[point_num][j:j+s+1],  xx[point_num][j:j+s+1] ,zz[point_num][j:j+s+1], zdir='zz[i]', linewidth =5, color = ( 0.0, 0.9*T[j], 0.0))
-#                 plt.pause(0.06)
+
             else : 
                 ax.plot(yy[i][j:j+s+1],  xx[i][j:j+s+1] ,zz[i][j:j+s+1], zdir='zz[i]', linewidth =3, color = (T[j], 0.0, 0.0))
-#                 plt.pause(0.06)
 
-    #for angle in range(0, 360):
-        # ax.view_init(5, i)
-        # plt.pause(0.01)
-        # plt.draw()
     ax.w_xaxis.set_pane_color((0.2, 0.3, 0.8, 1.0))
     ax.w_yaxis.set_pane_color((0.2, 0.3, 0.8, 1.0))
     ax.w_zaxis.set_pane_color((0.2, 0.3, 0.8, 1.0))
@@ -284,7 +253,6 @@ def Trajectory_3D_TimeVarying(frame_num, single_flag, point_num, s, x, y, z, num
     ax.set_xlabel('Y')
     ax.set_ylabel('X')
     ax.set_zlabel('Z')
-    plt.savefig(str(video_file) + '4d_timeVariying_.jpg', dpi=600)
 
     plt.show()
 
@@ -509,19 +477,6 @@ def computing_affinity(traj_pool, frame_numbers, flatten_AR_mat, number_of_point
     
     # Now let us create a pairwise Martin Distance:
 
-   #===================================================================================
-   # Parallel version : just for faster data acquisition
-   #===================================================================================
-    # import multiprocessing
-    # from joblib import Parallel, delayed
-    # from multiprocessing import Pool
-    # num_cores = multiprocessing.cpu_count()
-
-    # Mrt_dist_mat = Parallel(n_jobs = num_cores)(delayed(martin)(flatten_AR_mat[i], C, flatten_AR_mat[j], C) for i in range(flatten_AR_mat.shape[0]) 
-    #                                             for j in range(flatten_AR_mat.shape[0]))
-    # Mrt_dist_mat = np.asarray(Mrt_dist_mat)
-    # Mrt_dist_mat = Mrt_dist_mat.reshape(flatten_AR_mat.shape[0],flatten_AR_mat.shape[0])
-    # print(Mrt_dist_mat.shape)
 #===========================================================================================================
     
     Mrt_dist_mat = np.zeros(shape=(flatten_AR_mat.shape[0], flatten_AR_mat.shape[0]))
@@ -533,9 +488,6 @@ def computing_affinity(traj_pool, frame_numbers, flatten_AR_mat, number_of_point
         print(i, j)
 #===========================================================================================================    
 
-
-
-    #OK! Now, It's the to polish the results of computing the distance:
     Mrt_dist_mat = (Mrt_dist_mat.T + Mrt_dist_mat) * .5
     for i in range (Mrt_dist_mat.shape[0]):
         for j in range (Mrt_dist_mat.shape[1]):
@@ -543,6 +495,7 @@ def computing_affinity(traj_pool, frame_numbers, flatten_AR_mat, number_of_point
                 Mrt_dist_mat[i, j] = 0.0
     print('Check if any value in distance matrix in "Nan": ', str(np.isnan(Mrt_dist_mat).any()))
     print('Check if any value in distance matrix in "inf": ', str(np.isinf(Mrt_dist_mat).any()))
+
     #Converting the distance to similarity:
     similarity1 = np.exp(-.5 * Mrt_dist_mat / Mrt_dist_mat.std())
     
@@ -610,10 +563,6 @@ def visualize_clusters(color_list, label, xx, yy, zz, output_png_file):
     plt.show()
 
 
-#     np.save('Xdim.npy', allx)
-#     np.save('Ydim.npy', ally)
-#     np.save('Zdim.npy', allz)
-
 def main():
 	# import time 
 	# startTime = time.time()
@@ -652,9 +601,6 @@ def main():
 	xx, yy, zz = tracker(all_centers_noisefree)
 	#simple_visualization_tracked_points(xx, yy, zz, xx.shape[0], 15, 10, 150, 'test_track_serial')
 	print('Tracking part is completed!...')
-	# xx = np.load('/home/vel/Downloads/toxo-clustering/ToxoPlasma-master/Trajectory Clustering/Martin_test/XX.npy')
-	# yy = np.load('/home/vel/Downloads/toxo-clustering/ToxoPlasma-master/Trajectory Clustering/Martin_test/YY.npy')
-	# zz = np.load('/home/vel/Downloads/toxo-clustering/ToxoPlasma-master/Trajectory Clustering/Martin_test/ZZ.npy')
 
 	#================= Pre Processing for clustering ==========
 	#print(all_centers_noisefree.shape)
