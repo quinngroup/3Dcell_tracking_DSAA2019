@@ -531,8 +531,8 @@ def main():
 	global total 
 	global BW
 	
-	folders = '/home/vel/Downloads/Cole_002_TiffStack-20190509T193151Z-001/Cole_002_TiffStack/'
-	sample_address = '/home/vel/2041d5b6696f66aa3ad08ee54cbd2b811eb4fb7425ca94f86774aaee7cd2cb55/010t01z01.tif'
+	folders = '/The/Address/To/The_dataset/'
+	sample_address = 'The/Adress/To/Sample_TIFF/image/sample_tiff_image.tif'
 	extension =  '*.tif'
 	denoising_thresh = 1
 	color_list = ['red', 'y', 'blue', 'green', 'cyan', 'pink','lime','brown']
