@@ -1,28 +1,25 @@
-from PIL import Image
-from dask import delayed
 import numpy as np
 import math
 import cv2
 import glob
-from scipy import ndimage
 from matplotlib import pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
-from scipy import ndimage as ndi
-import scipy.misc
-from skimage import exposure
-import os 
-import multiprocessing
+import os
+import dask
+from dask.multiprocessing import get as mp_get
 from dask.distributed import Client, progress
 import dask.array as da
 import dask_ndmeasure
-import dask
-import dask.threaded
+from dask import delayed
 from scipy.ndimage.measurements import center_of_mass
 from scipy.optimize import linear_sum_assignment
 from scipy.spatial import distance
-import numpy as np
 import scipy.linalg as sla
-from dask.multiprocessing import get as mp_get
+from scipy import ndimage as ndi
+import scipy.misc
+from skimage import exposure
+from scipy import ndimage
+import multiprocessing
 
 def read_images(folders_address, file_extension, sample_address, t_slice, z_slice, x_dim, y_dim):
 
