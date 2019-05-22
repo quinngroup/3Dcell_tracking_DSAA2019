@@ -701,166 +701,6 @@ def clustering(affinity, num_of_clusters, labels_file_name, affinity_file_name):
     np.save(affinity_file_name ,affinity)
     return(yB)
 
-def visualize_clusters(color_list, label, xx, yy, zz, output_png_file):
-    
-    # Plotting the trajectories and showing the clustering using a specific color for each label
-    col = color_list
-    # for i in range(Number_of_points):
-    #     plt.plot(matrix_nexb[i],matrix_neyb[i] , color= col[yB[i]])
-
-    # plt.gca().invert_yaxis()
-    # plt.show()
-
-    fig = plt.figure(figsize=(15,10))
-    ax = fig.add_subplot(111, projection='3d')
-    for i in range(xx.shape[0]):
-        ax.plot(yy[i], xx[i], zz[i], 
-                zdir='zz[i]', linewidth = 3,  color= col[label[i]])
-
-    ax.w_xaxis.set_pane_color((0.0, 0.0, 0.0, 1.0))
-    ax.w_yaxis.set_pane_color((0.0, 0.0, 0.0, 1.0))
-    ax.w_zaxis.set_pane_color((0.0, 0.0, 0.0, 1.0))
-    ax.view_init(35, 45)
-    plt.grid(False)
-    plt.savefig(output_png_file)
-    plt.show()
-
-
-
-global total 
-global fs
-global BW
-global sc
-
-folders = '/home/vel/Downloads/dat_files/'
-sample_address = '/home/vel/2041d5b6696f66aa3ad08ee54cbd2b811eb4fb7425ca94f86774aaee7cd2cb55/010t01z01.tif'
-folders = 'gcs://uga-toxo/3d_video1/'
-sample_address = 't01/010t01z01.tif'
-client = Client('dask-scheduler:8786')
-fs = gcsfs.GCSFileSystem(project='toxoplasma-motility')
-extension =  '*.tif'
-denoising_thresh = 1
-color_list = ['red', 'y', 'blue', 'green', 'cyan', 'pink','lime','brown']
-
-num_cores = 20#multiprocessing.cpu_count()
-#client = Client(n_workers=num_cores)
-
-all_image_arr = read_images(folders, extension, sample_address, 63, 41, 500, 502)
-print(all_image_arr.shape)
-
-
-
-# #================ Thresholding: =============
-BW = np.array([i if i > 42 else 0 for i in range(0,256)]).astype(np.uint8)
-thresh = lambda  x : cv2.LUT (x, BW)
-thresholded_array = all_image_arr.map_blocks(thresh).compute()
-thresholded_dask_arr = da.from_array(thresholded_array, chunks=(1, 1, 500, 502), lock=True) 
-
-print(thresholded_dask_arr.shape)
-
-# #================ 3d CCL and labeling: =============
-
-structure = np.ones((3,3,3), dtype = np.int)
-labl2 = lambda  x : np.asarray(dask_ndmeasure.label(x, structure)[1])
-
-
-ccl_res = [dask.delayed(dask_ndmeasure.label)(thresholded_dask_arr[frames], structure)[0] for frames in range(np.shape(thresholded_dask_arr)[0])] 
-ccls = [da.from_delayed( d_r, shape=(41, 500, 502), dtype=thresholded_dask_arr[0].dtype) for d_r in ccl_res]
-ccl_cmpt = [dask.delayed(labl2)(thresholded_dask_arr[frames]) for frames in range(np.shape(thresholded_dask_arr)[0])] 
-ccls_cmpt = [da.from_delayed( d_r, shape=(), dtype='int64') for d_r in ccl_cmpt]
-ccl_arr0 = da.stack(ccls, axis=0)
-ccl_arr1 = da.stack(ccls_cmpt)
-
-all_cmpts = ccl_arr1.compute()
-all_labels = ccl_arr0.compute()
-print('========================================')
-print(all_labels.shape)
-print('========================================')
-print(all_cmpts.shape)
-
-
-
-#================ Computing the volume of each compnent: ===============
-
-count_unqe = [ dask.delayed(np.unique)(all_labels[frames], return_counts = True) for frames in range(thresholded_dask_arr.shape[0]) ]
-count_u1 = dask.compute(*count_unqe)
-
-
-count_u1 = np.array(count_u1)
-unique = count_u1[:, 0]
-counts = count_u1[:, 1]
-
-
-#================ Denoising: ===============
-
-thr_idxs4 = [ dask.delayed(index_thr)(counts[frame],unique[frame], denoising_thresh) for frame in range(thresholded_dask_arr.shape[0]) ]
-thr_idxs_computed = dask.compute(*thr_idxs4)
-
-print(len(thr_idxs_computed[0]))
-
-#================ Computing the centers: ===============
-
-all_centers_noisefree = [ dask.delayed(center_of_mass)(thresholded_dask_arr[frames], labels=all_labels[frames], index=thr_idxs_computed[frames]) for frames in range(thresholded_dask_arr.shape[0])]
-#a_c_n = dask.compute(*all_centers_noisefree)
-
-a_c_n_fast = dask.compute(*all_centers_noisefree, scheduler='threads')
-
-#================= Tracking Part : ======================
-
-xx, yy, zz = tracker(a_c_n_fast)
-
-#================= Clustering Part : ======================
-#dask.config.set(scheduler='threads')
-
-# xx = np.load('/home/vel/Downloads/toxo-clustering/ToxoPlasma-master/Trajectory Clustering/Martin_test/XX.npy')
-# yy = np.load('/home/vel/Downloads/toxo-clustering/ToxoPlasma-master/Trajectory Clustering/Martin_test/YY.npy')
-# zz = np.load('/home/vel/Downloads/toxo-clustering/ToxoPlasma-master/Trajectory Clustering/Martin_test/ZZ.npy')
-
-#================= Pre Processing for clustering ==========
-#print(all_centers_noisefree.shape)
-tracked_frames = all_cmpts.shape[0]- 1
-object_numbers = xx.shape[0]
-xx, yy, zz = preprocessing_for_clustering(xx, yy, zz, tracked_frames, object_numbers)
-
-#================= Setting Auto regressive parameters and other initializations =========
-
-number_of_points = np.shape(xx)[0]
-AR_order = 5
-columns = AR_order * 2 * 2
-flatten_AR_mat = np.zeros(shape = (number_of_points, columns))
-cluster_num = 3
-print((number_of_points, columns), flatten_AR_mat.shape)
-
-#================= Creating a pool of preprocessed trajectories =========
-
-traj_pool = np.stack([xx, yy, zz])
-print(traj_pool.shape, xx[0].shape)
-
-simple_visualization_tracked_points(xx, yy, zz, xx.shape[0], 15, 10, 150, 'test_track_parallel')
-
-
-#sim1, sim2 = computing_affinity(traj_pool, tracked_frames, flatten_AR_mat, number_of_points)
-print("here")
-#yB1 = clustering(sim1, cluster_num, 'data_set1_labels.npy', 'data_set1_affinity.npy')
-#sc, yB1 = clustering_dask_ml(traj_pool, tracked_frames, flatten_AR_mat, number_of_points)
-
-#print(yB1)
-#visualize_clusters(color_list, yB1, xx, yy, zz, 'Dataset-1_clusters_visualization.png')
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 def clustering_dask_ml(traj_pool, frame_numbers, flatten_AR_mat, number_of_points, gamma = -.5):    
     #first We create a trajectory pool with the dimensions of 3x(Num_of_trajectoris)x(Num_of_frames)
     all_traj_mat = traj_pool.copy()
@@ -897,18 +737,160 @@ def clustering_dask_ml(traj_pool, frame_numbers, flatten_AR_mat, number_of_point
         return pairwise_kernels(X,Y, metric=rbf_martin)
     sc = SpectralClustering(n_clusters= 3, affinity = pairwise_martin, n_components= 40, gamma=gamma)
     return sc, None,flatten_AR_mat
-    #return sc, sc.fit_predict(flatten_AR_mat)
+
+def visualize_clusters(color_list, label, xx, yy, zz, output_png_file):
+    
+    # Plotting the trajectories and showing the clustering using a specific color for each label
+    col = color_list
+    # for i in range(Number_of_points):
+    #     plt.plot(matrix_nexb[i],matrix_neyb[i] , color= col[yB[i]])
+
+    # plt.gca().invert_yaxis()
+    # plt.show()
+
+    fig = plt.figure(figsize=(15,10))
+    ax = fig.add_subplot(111, projection='3d')
+    for i in range(xx.shape[0]):
+        ax.plot(yy[i], xx[i], zz[i], 
+                zdir='zz[i]', linewidth = 3,  color= col[label[i]])
+
+    ax.w_xaxis.set_pane_color((0.0, 0.0, 0.0, 1.0))
+    ax.w_yaxis.set_pane_color((0.0, 0.0, 0.0, 1.0))
+    ax.w_zaxis.set_pane_color((0.0, 0.0, 0.0, 1.0))
+    ax.view_init(35, 45)
+    plt.grid(False)
+    plt.savefig(output_png_file)
+    plt.show()
+
+
+def main():
+	global total 
+	global fs
+	global BW
+	global sc
+
+	folders = '/The/Address/To/The_dataset/'
+	sample_address = 'The/Adress/To/Sample_TIFF/image/sample_tiff_image.tif'
+	folders = 'gcs://uga-toxo/3d_video1/'
+	sample_address = 't01/010t01z01.tif'
+	client = Client('dask-scheduler:8786')
+	fs = gcsfs.GCSFileSystem(project='toxoplasma-motility')
+	extension =  '*.tif'
+	denoising_thresh = 1
+	color_list = ['red', 'y', 'blue', 'green', 'cyan', 'pink','lime','brown']
+
+	num_cores = 20#multiprocessing.cpu_count()
+	#client = Client(n_workers=num_cores)
+
+	all_image_arr = read_images(folders, extension, sample_address, 63, 41, 500, 502)
+	print(all_image_arr.shape)
 
 
 
+	# #================ Thresholding: =============
+	BW = np.array([i if i > 42 else 0 for i in range(0,256)]).astype(np.uint8)
+	thresh = lambda  x : cv2.LUT (x, BW)
+	thresholded_array = all_image_arr.map_blocks(thresh).compute()
+	thresholded_dask_arr = da.from_array(thresholded_array, chunks=(1, 1, 500, 502), lock=True) 
+
+	print(thresholded_dask_arr.shape)
+
+	# #================ 3d CCL and labeling: =============
+
+	structure = np.ones((3,3,3), dtype = np.int)
+	labl2 = lambda  x : np.asarray(dask_ndmeasure.label(x, structure)[1])
 
 
-sc, yB1, As = clustering_dask_ml(traj_pool, tracked_frames, flatten_AR_mat, number_of_points, gamma = -0.5)
+	ccl_res = [dask.delayed(dask_ndmeasure.label)(thresholded_dask_arr[frames], structure)[0] for frames in range(np.shape(thresholded_dask_arr)[0])] 
+	ccls = [da.from_delayed( d_r, shape=(41, 500, 502), dtype=thresholded_dask_arr[0].dtype) for d_r in ccl_res]
+	ccl_cmpt = [dask.delayed(labl2)(thresholded_dask_arr[frames]) for frames in range(np.shape(thresholded_dask_arr)[0])] 
+	ccls_cmpt = [da.from_delayed( d_r, shape=(), dtype='int64') for d_r in ccl_cmpt]
+	ccl_arr0 = da.stack(ccls, axis=0)
+	ccl_arr1 = da.stack(ccls_cmpt)
+
+	all_cmpts = ccl_arr1.compute()
+	all_labels = ccl_arr0.compute()
+	print('========================================')
+	print(all_labels.shape)
+	print('========================================')
+	print(all_cmpts.shape)
 
 
-%%time
-sc.fit(As)
 
-eigs = sc.eigenvalues_.compute()
-yB1= sc.labels_.compute()
-visualize_clusters(color_list, yB1, xx, yy, zz, 'Dataset-1_clusters_visualization.png')
+	#================ Computing the volume of each compnent: ===============
+
+	count_unqe = [ dask.delayed(np.unique)(all_labels[frames], return_counts = True) for frames in range(thresholded_dask_arr.shape[0]) ]
+	count_u1 = dask.compute(*count_unqe)
+
+
+	count_u1 = np.array(count_u1)
+	unique = count_u1[:, 0]
+	counts = count_u1[:, 1]
+
+
+	#================ Denoising: ===============
+
+	thr_idxs4 = [ dask.delayed(index_thr)(counts[frame],unique[frame], denoising_thresh) for frame in range(thresholded_dask_arr.shape[0]) ]
+	thr_idxs_computed = dask.compute(*thr_idxs4)
+
+	print(len(thr_idxs_computed[0]))
+
+	#================ Computing the centers: ===============
+
+	all_centers_noisefree = [ dask.delayed(center_of_mass)(thresholded_dask_arr[frames], labels=all_labels[frames], index=thr_idxs_computed[frames]) for frames in range(thresholded_dask_arr.shape[0])]
+	#a_c_n = dask.compute(*all_centers_noisefree)
+
+	a_c_n_fast = dask.compute(*all_centers_noisefree, scheduler='threads')
+
+	#================= Tracking Part : ======================
+
+	xx, yy, zz = tracker(a_c_n_fast)
+
+	#================= Clustering Part : ======================
+	#dask.config.set(scheduler='threads')
+
+	# xx = np.load('/home/vel/Downloads/toxo-clustering/ToxoPlasma-master/Trajectory Clustering/Martin_test/XX.npy')
+	# yy = np.load('/home/vel/Downloads/toxo-clustering/ToxoPlasma-master/Trajectory Clustering/Martin_test/YY.npy')
+	# zz = np.load('/home/vel/Downloads/toxo-clustering/ToxoPlasma-master/Trajectory Clustering/Martin_test/ZZ.npy')
+
+	#================= Pre Processing for clustering ==========
+	#print(all_centers_noisefree.shape)
+	tracked_frames = all_cmpts.shape[0]- 1
+	object_numbers = xx.shape[0]
+	xx, yy, zz = preprocessing_for_clustering(xx, yy, zz, tracked_frames, object_numbers)
+
+	#================= Setting Auto regressive parameters and other initializations =========
+
+	number_of_points = np.shape(xx)[0]
+	AR_order = 5
+	columns = AR_order * 2 * 2
+	flatten_AR_mat = np.zeros(shape = (number_of_points, columns))
+	cluster_num = 3
+	print((number_of_points, columns), flatten_AR_mat.shape)
+
+	#================= Creating a pool of preprocessed trajectories =========
+
+	traj_pool = np.stack([xx, yy, zz])
+	print(traj_pool.shape, xx[0].shape)
+
+	simple_visualization_tracked_points(xx, yy, zz, xx.shape[0], 15, 10, 150, 'test_track_parallel')
+
+
+	#sim1, sim2 = computing_affinity(traj_pool, tracked_frames, flatten_AR_mat, number_of_points)
+	print("here")
+	#yB1 = clustering(sim1, cluster_num, 'data_set1_labels.npy', 'data_set1_affinity.npy')
+	#sc, yB1 = clustering_dask_ml(traj_pool, tracked_frames, flatten_AR_mat, number_of_points)
+
+	#print(yB1)
+	#visualize_clusters(color_list, yB1, xx, yy, zz, 'Dataset-1_clusters_visualization.png')
+	#return sc, sc.fit_predict(flatten_AR_mat)
+	sc.fit(As)
+
+	eigs = sc.eigenvalues_.compute()
+	yB1= sc.labels_.compute()
+	visualize_clusters(color_list, yB1, xx, yy, zz, 'Dataset-1_clusters_visualization.png')
+
+
+	sc, yB1, As = clustering_dask_ml(traj_pool, tracked_frames, flatten_AR_mat, number_of_points, gamma = -0.5)
+if __name__ == "__main__":
+    main()
