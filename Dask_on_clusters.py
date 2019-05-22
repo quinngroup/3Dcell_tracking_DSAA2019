@@ -638,18 +638,6 @@ def computing_affinity(traj_pool, frame_numbers, flatten_AR_mat, number_of_point
     Mrt_dist_mat = np.asarray(Mrt_dist_mat)
     Mrt_dist_mat = Mrt_dist_mat.reshape(flatten_AR_mat.shape[0],flatten_AR_mat.shape[0])
     print(Mrt_dist_mat.shape)
-#===========================================================================================================
-    
-    #Mrt_dist_mat = np.zeros(shape=(flatten_AR_mat.shape[0], flatten_AR_mat.shape[0]))
-    #for i in range(flatten_AR_mat.shape[0]):
-    #    for j in range(flatten_AR_mat.shape[0]):
-    #        Mrt_dist_mat[i, j] = martin(flatten_AR_mat[i], C, flatten_AR_mat[j], C)
-    #        if i == 1 and j == 1 :
-    #            print(Mrt_dist_mat[i, j])
-    #    print(i, j)
-#===========================================================================================================    
-
-
 
     #OK! Now, It's the to polish the results of computing the distance:
     Mrt_dist_mat = (Mrt_dist_mat.T + Mrt_dist_mat) * .5
@@ -848,11 +836,6 @@ def main():
 
 	#================= Clustering Part : ======================
 	#dask.config.set(scheduler='threads')
-
-	# xx = np.load('/home/vel/Downloads/toxo-clustering/ToxoPlasma-master/Trajectory Clustering/Martin_test/XX.npy')
-	# yy = np.load('/home/vel/Downloads/toxo-clustering/ToxoPlasma-master/Trajectory Clustering/Martin_test/YY.npy')
-	# zz = np.load('/home/vel/Downloads/toxo-clustering/ToxoPlasma-master/Trajectory Clustering/Martin_test/ZZ.npy')
-
 	#================= Pre Processing for clustering ==========
 	#print(all_centers_noisefree.shape)
 	tracked_frames = all_cmpts.shape[0]- 1
