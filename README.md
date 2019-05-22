@@ -8,11 +8,11 @@ There are 3 version of our codes: Serial, The local dask and the dask on cluster
 First you need to store all the data on your local machine, then inside the code there are two
 parameters that should be changed:
 
-_folders : The address of the folders containing the image slices should be mention here.
+_folders : The address of the folders containing the image slices should be mention here._
 
-_sample_address : The address for a sample Tiff image to extract some parameters
+_sample_address : The address for a sample Tiff image to extract some parameters_
 
-_cluster_numbers : for specifying the number of clusters
+_cluster_numbers : for specifying the number of clusters_
 
 Also there are other parameters inside the program that can be changed based on the application.
 
