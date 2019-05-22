@@ -867,13 +867,13 @@ def main():
 	#print(yB1)
 	#visualize_clusters(color_list, yB1, xx, yy, zz, 'Dataset-1_clusters_visualization.png')
 	#return sc, sc.fit_predict(flatten_AR_mat)
-	sc.fit(As)
+
+	sc, yB1, As = clustering_dask_ml(traj_pool, tracked_frames, flatten_AR_mat, number_of_points, gamma = -0.5)
+		sc.fit(As)
 
 	eigs = sc.eigenvalues_.compute()
 	yB1= sc.labels_.compute()
 	visualize_clusters(color_list, yB1, xx, yy, zz, 'Dataset-1_clusters_visualization.png')
-
-
-	sc, yB1, As = clustering_dask_ml(traj_pool, tracked_frames, flatten_AR_mat, number_of_points, gamma = -0.5)
+	
 if __name__ == "__main__":
     main()
