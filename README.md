@@ -2,7 +2,7 @@
 This repository contains the codes for the paper we submitted to IEEE DSAA 2019 :
 _"Lightweight and Scalable Particle Tracking and Motion Clustering of 3D Cell Trajectories"_
 
-There are 3 version of our codes: Serial, The local dask and the dask on cluster version. 
+There are 3 versions of our codes: Serial, The local dask and the dask on cluster version. 
 
 We implemented our pipeline using Python 3.6 and associated scientific computing libraries (NumPy, SciPy, scikitlearn, matplotlib). The core of our detection and tracking algorithm used a combination of tools availablein the OpenCV 3.1 computer vision library. For the distributed version of the core platform, we used *Dask Arrays* and other Dask dataframes. Some machine learning tools in the distributed version, are obtained from Dask-ml and Dask-ndarrays libraries. For local parallelization and multiprocessing, we used joblib backend and multiprocessing library of Python.
 
