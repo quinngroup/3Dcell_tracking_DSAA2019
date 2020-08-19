@@ -22,7 +22,6 @@ import dask.threaded
 from scipy.ndimage.measurements import center_of_mass
 from scipy.optimize import linear_sum_assignment
 from scipy.spatial import distance
-import numpy as np
 import scipy.linalg as sla
 from dask.multiprocessing import get as mp_get
 from dask_ml.cluster import SpectralClustering
