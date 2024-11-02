@@ -1,6 +1,6 @@
 # 🧬 3D Cell Tracking with Dask for IEEE DSAA 2019
 
-This repository hosts the code for our paper submitted to IEEE DSAA 2019: **"Lightweight and Scalable Particle Tracking and Motion Clustering of 3D Cell Trajectories"**. The project provides a robust pipeline for tracking and clustering cell trajectories using various implementations, including serial, local Dask, and Dask on a cluster.
+This repository hosts the code for our paper accepted in IEEE DSAA 2019: **"Lightweight and Scalable Particle Tracking and Motion Clustering of 3D Cell Trajectories"**. The project provides a robust pipeline for tracking and clustering cell trajectories using various implementations, including serial, local Dask, and Dask on a cluster.
 
 ---
 
@@ -20,6 +20,32 @@ This repository features three versions of the code:
   - **Dask Arrays & DataFrames** for scalable processing
   - **Dask-ML & Dask-NDArray** for distributed machine learning
   - **Joblib & multiprocessing** for local parallel execution
+
+---
+
+## 📄 Paper Details
+
+The methods and results of this project are detailed in our paper, which can be accessed through the following links:
+
+- **IEEE Download Page**: [Link to IEEE](https://ieeexplore.ieee.org/abstract/document/8964177)
+- **arXiv Preprint**: [Link to arXiv](https://arxiv.org/pdf/1908.03775)
+
+### Citation
+For those interested in citing this work, please use the following format:
+
+```bibtex
+@INPROCEEDINGS{8964177,
+  author={Sedigh Fazli, Mojtaba and Stadler, Rachel V. and Alaila, BahaaEddin and Vella, Stephen A. and Moreno, Silvia N. J. and Ward, Gary E. and Quinn, Shannon},
+  booktitle={2019 IEEE International Conference on Data Science and Advanced Analytics (DSAA)}, 
+  title={Lightweight and Scalable Particle Tracking and Motion Clustering of 3D Cell Trajectories}, 
+  year={2019},
+  volume={},
+  number={},
+  pages={412-421},
+  keywords={Large scale 3D Cell Tracking;Motion Trajectories;Geodesic distance;Spectral Clustering;Toxoplasma gondii;Martin Distance},
+  doi={10.1109/DSAA.2019.00056}
+}
+```
 
 ---
 
